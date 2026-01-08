@@ -310,3 +310,28 @@ button:hover { background: var(--primary-dark); box-shadow: 0 0 15px rgba(214, 0
     color: white;
     transform: scale(1.1);
 }
+/* --- ESTILO DAS BARRAS DE BUSCA --- */
+.search-container {
+    margin: 15px 0;
+    width: 100%;
+}
+
+.search-container input {
+    background: var(--input-bg);
+    border: 1px solid var(--primary);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 20px; /* Arredondado para diferenciar dos outros inputs */
+    width: 100%;
+    outline: none;
+    transition: box-shadow 0.3s;
+}
+
+.search-container input:focus {
+    box-shadow: 0 0 10px rgba(214, 0, 0, 0.5);
+}
+
+/* Esconder itens que não batem na busca */
+.hidden-search {
+    display: none !important;
+}

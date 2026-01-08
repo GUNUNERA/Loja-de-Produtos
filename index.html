@@ -8,7 +8,7 @@
 </head>
 <body>
 
-    
+
     <div id="intro-screen" onclick="startIntroAnimation()">
         <div class="intro-container">
             <div class="split-image top-half"></div>
@@ -32,6 +32,9 @@
 
     <div id="screen-selection" class="screen">
         <h2 id="welcome-msg">Olá, Usuário</h2>
+        <div class="search-container">
+    <input type="text" id="search-jason" placeholder="Pesquisar por conteúdo nos Jasons..." oninput="filterJasons()">
+</div>
         <p>Selecione um Jason para carregar ou criar:</p>
         <div class="jason-grid" id="jason-grid">
             </div>
@@ -40,6 +43,9 @@
     <div id="screen-editor" class="screen">
         <div class="editor-container">
             <h3>Adicionar Novo Item</h3>
+            <div class="search-container">
+    <input type="text" id="search-product" placeholder="Filtrar produtos nesta lista..." oninput="filterProducts()">
+</div>
             
             <div class="input-row">
                 <div class="input-group">

@@ -4,9 +4,28 @@ let currentJasonIndex = null;
 let jasonsData = JSON.parse(localStorage.getItem('jasonsData')) || new Array(15).fill(null);
 let currentListItems = [];
 
-// --- NAVEGAÇÃO E INICIALIZAÇÃO ---
+// --- CONFIGURAÇÃO DE SONS (SFX) ---
+const soundSwipe = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'); // Abertura
+const soundClick = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'); // Botões gerais
+const soundAdd = new Audio('https://assets.mixkit.co/active_storage/sfx/2004/2004-preview.mp3');   // Sucesso/Salvar
+const soundDenied = new Audio('https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3'); // ACESSO NEGADO / EXCLUIR
+
+// --- TELA DE ABERTURA & NAVEGAÇÃO ---
+
+function startIntroAnimation() {
+    const introScreen = document.getElementById('intro-screen');
+    
+    // Tocar som de deslize ao iniciar a animação visual
+    soundSwipe.play().catch(e => console.log("Áudio aguardando interação do usuário..."));
+
+    introScreen.classList.add('animate');
+    setTimeout(() => {
+        introScreen.style.display = 'none';
+    }, 1500); 
+}
 
 function confirmName() {
+    soundClick.play();
     const nameInput = document.getElementById('user-name-input');
     if (nameInput.value.trim() === "") {
         alert("Por favor, digite seu nome.");
@@ -22,7 +41,6 @@ function switchScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
 
-    // Mostrar botão Home apenas se não estiver no login ou seleção
     const homeBtn = document.getElementById('home-btn');
     if (screenId === 'screen-editor') {
         homeBtn.style.display = 'block';
@@ -32,13 +50,12 @@ function switchScreen(screenId) {
 }
 
 function goToJasonSelection() {
+    soundClick.play();
     switchScreen('screen-selection');
     renderJasonGrid();
 }
 
-// --- LÓGICA DO GRID JASON ---
-
-// --- LÓGICA DO GRID JASON (ATUALIZADA) ---
+// --- LÓGICA DO GRID JASON & PESQUISA ---
 
 function renderJasonGrid() {
     const grid = document.getElementById('jason-grid');
@@ -49,57 +66,80 @@ function renderJasonGrid() {
         const slotNumber = index + 1;
         
         if (data) {
-            // Slot Ocupado
             slot.className = 'jason-slot filled';
             const totalItems = data.items ? data.items.length : 0;
             const totalValue = data.items.reduce((acc, item) => acc + item.total, 0);
             
-            // Adicionamos o botão de lixeira (🗑️)
             slot.innerHTML = `
-                <div class="reset-jason-btn" onclick="event.stopPropagation(); resetJason(${index})">🗑️</div>
+                <div class="reset-jason-btn" title="Resetar Jason" onclick="event.stopPropagation(); resetJason(${index})">🗑️</div>
                 <strong>Jason ${slotNumber}</strong>
                 <span style="font-size:0.8rem; margin-top:5px;">${totalItems} Produtos</span>
                 <span style="font-size:0.8rem;">R$ ${totalValue.toFixed(2)}</span>
             `;
-            slot.onclick = () => loadJason(index);
+            slot.onclick = () => { soundClick.play(); loadJason(index); };
         } else {
-            // Slot Vazio
             slot.className = 'jason-slot empty';
             slot.innerHTML = `
                 <strong>Jason ${slotNumber}</strong>
                 <span>(Criar Novo)</span>
             `;
-            slot.onclick = () => createJason(index);
+            slot.onclick = () => { soundClick.play(); createJason(index); };
         }
         grid.appendChild(slot);
     });
 }
 
-// NOVA FUNÇÃO: Reseta o Jason para vazio
+function filterJasons() {
+    const term = document.getElementById('search-jason').value.toLowerCase();
+    const slots = document.querySelectorAll('.jason-slot');
+
+    jasonsData.forEach((data, index) => {
+        const slot = slots[index];
+        const contentString = data ? JSON.stringify(data).toLowerCase() : "";
+        const matches = contentString.includes(term) || `jason ${index + 1}`.includes(term);
+        
+        slot.classList.toggle('hidden-search', term !== "" && !matches);
+    });
+}
+
 function resetJason(index) {
-    if (confirm(`Deseja realmente apagar todos os dados do Jason ${index + 1}?`)) {
-        jasonsData[index] = null; // Limpa o dado no array
-        localStorage.setItem('jasonsData', JSON.stringify(jasonsData)); // Atualiza o armazenamento
-        renderJasonGrid(); // Recarrega os quadradinhos na tela
+    // Tocar som de Negado/Alerta antes mesmo de confirmar para dar impacto
+    soundDenied.play();
+    
+    if (confirm(`SISTEMA: Deseja realmente APAGAR permanentemente os dados do Jason ${index + 1}?`)) {
+        jasonsData[index] = null;
+        localStorage.setItem('jasonsData', JSON.stringify(jasonsData));
+        renderJasonGrid();
     }
 }
 
 function createJason(index) {
     currentJasonIndex = index;
-    currentListItems = []; // Começa vazio
+    currentListItems = [];
     updateListUI();
     switchScreen('screen-editor');
 }
 
 function loadJason(index) {
     currentJasonIndex = index;
-    // Carrega os itens salvos desse Jason para a memória temporária
     currentListItems = [...jasonsData[index].items]; 
     updateListUI();
     switchScreen('screen-editor');
 }
 
-// --- LÓGICA DO EDITOR DE PRODUTOS ---
+// --- LÓGICA DO EDITOR & FILTRO DE PRODUTOS ---
+
+function filterProducts() {
+    const term = document.getElementById('search-product').value.toLowerCase();
+    const items = document.querySelectorAll('.list-item');
+
+    currentListItems.forEach((item, index) => {
+        const text = (item.nome + item.cdp + item.detalhes).toLowerCase();
+        if(items[index]) {
+            items[index].classList.toggle('hidden-search', !text.includes(term));
+        }
+    });
+}
 
 function calculateItemTotal() {
     const qtd = parseFloat(document.getElementById('input-qtd').value) || 0;
@@ -119,24 +159,22 @@ function addProductToList() {
     const detalhes = document.getElementById('input-detalhes').value;
 
     if (!cdp || !nome || !qtd || !valor) {
-        alert("Preencha os campos principais (CDP, Nome, Qtd, Valor).");
+        soundDenied.play(); // Som de erro se tentar adicionar vazio
+        alert("ERRO: Preencha os campos obrigatórios.");
         return;
     }
 
+    soundAdd.play();
+
     const newItem = {
-        id: Date.now(), // ID único
-        cdp,
-        nome,
-        qtd,
-        valor,
-        detalhes,
+        id: Date.now(),
+        cdp, nome, qtd, valor, detalhes,
         total: qtd * valor
     };
 
     currentListItems.push(newItem);
     updateListUI();
     
-    // Limpar inputs
     document.getElementById('input-cdp').value = "";
     document.getElementById('input-nome').value = "";
     document.getElementById('input-qtd').value = "";
@@ -146,6 +184,8 @@ function addProductToList() {
 }
 
 function removeProduct(id) {
+    // Tocar som de Acesso Negado ao remover item
+    soundDenied.play();
     currentListItems = currentListItems.filter(item => item.id !== id);
     updateListUI();
 }
@@ -162,13 +202,10 @@ function updateListUI() {
         div.className = 'list-item';
         div.innerHTML = `
             <div>${item.cdp}</div>
-            <div>
-                ${item.nome}
-                ${item.detalhes ? `<br><small style="color:#666; font-style:italic;">${item.detalhes}</small>` : ''}
-            </div>
+            <div>${item.nome}<br><small>${item.detalhes}</small></div>
             <div>${item.qtd}</div>
-            <div>${item.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
-            <div style="font-weight:bold; color:var(--primary);">${item.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+            <div>${item.valor.toFixed(2)}</div>
+            <div style="color:var(--primary)">${item.total.toFixed(2)}</div>
             <button class="delete-btn" onclick="removeProduct(${item.id})">X</button>
         `;
         container.appendChild(div);
@@ -179,32 +216,18 @@ function updateListUI() {
 
 function saveToJason() {
     if (currentListItems.length === 0) {
+        soundDenied.play();
         alert("A lista está vazia!");
         return;
     }
 
-    const jasonObject = {
+    soundAdd.play();
+    jasonsData[currentJasonIndex] = {
         createdDate: new Date(),
         items: currentListItems
     };
 
-    // Salva no slot selecionado
-    jasonsData[currentJasonIndex] = jasonObject;
-    
-    // Persiste no LocalStorage do navegador
     localStorage.setItem('jasonsData', JSON.stringify(jasonsData));
-
-    alert(`Lista salva com sucesso no Jason ${currentJasonIndex + 1}!`);
+    alert(`DADOS SINCRONIZADOS: Jason ${currentJasonIndex + 1} atualizado.`);
     goToJasonSelection();
-}
-
-// --- LÓGICA DA TELA DE ABERTURA ---
-function startIntroAnimation() {
-    const introScreen = document.getElementById('intro-screen');
-    introScreen.classList.add('animate');
-
-    // Espera a animação acabar (1.5s) para esconder a tela
-    setTimeout(() => {
-        introScreen.style.display = 'none';
-    }, 1500); 
 }
