@@ -184,3 +184,14 @@ function saveToJason() {
     alert(`Lista salva com sucesso no Jason ${currentJasonIndex + 1}!`);
     goToJasonSelection();
 }
+
+// --- LÓGICA DA TELA DE ABERTURA ---
+function startIntroAnimation() {
+    const introScreen = document.getElementById('intro-screen');
+    introScreen.classList.add('animate');
+
+    // Espera a animação acabar (1.5s) para esconder a tela
+    setTimeout(() => {
+        introScreen.style.display = 'none';
+    }, 1500); 
+}
