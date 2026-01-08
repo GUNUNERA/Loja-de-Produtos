@@ -1,23 +1,15 @@
-// --- ESTADO DA APLICAÇÃO ---
+const API_URL = "http://localhost:3001";
 let currentUser = "";
 let currentMode = "shared"; 
-let currentGroup = "default";
+let currentGroup = "shared";
 let currentJasonIndex = null;
 let currentListItems = [];
 
-// Banco de dados centralizado
-let allData = JSON.parse(localStorage.getItem('jason_vault')) || {
-    shared: new Array(15).fill(null),
-    privateGroups: {} 
-};
-
-// --- CONFIGURAÇÃO DE SONS ---
+// Sons
 const soundSwipe = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'); 
 const soundClick = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'); 
 const soundAdd = new Audio('https://assets.mixkit.co/active_storage/sfx/2004/2004-preview.mp3');   
 const soundDenied = new Audio('https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3'); 
-
-// --- NAVEGAÇÃO E AUTH ---
 
 function startIntroAnimation() {
     soundSwipe.play().catch(e => {});
@@ -27,121 +19,107 @@ function startIntroAnimation() {
 
 function confirmName() {
     currentUser = document.getElementById('user-name-input').value.trim();
-    if (!currentUser) { soundDenied.play(); alert("Insira sua assinatura!"); return; }
-    soundClick.play();
-    switchScreen('screen-mode');
-}
-
-// BOTÃO DA CASINHA: Agora volta para a escolha de Modo
-function goToHomeMenu() {
-    soundClick.play();
+    if (!currentUser) { alert("Insira sua assinatura!"); return; }
     switchScreen('screen-mode');
 }
 
 function selectMode(mode) {
-    soundClick.play();
     currentMode = mode;
     if (mode === 'shared') {
-        currentGroup = 'Compartilhado';
-        enterJasonSelection(); // Entra direto na grade de 15
+        currentGroup = 'shared';
+        enterJasonSelection();
     } else {
         switchScreen('screen-private-auth');
     }
 }
 
-function handlePrivateAuth(action) {
+async function handlePrivateAuth(action) {
     const group = document.getElementById('group-name').value.trim();
     const pass = document.getElementById('group-pass').value.trim();
+    const route = action === 'create' ? '/create-group' : '/login-group';
 
-    if (!group || !pass) { soundDenied.play(); alert("Preencha grupo e senha!"); return; }
+    try {
+        const response = await fetch(`${API_URL}${route}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: group, password: pass })
+        });
+        const result = await response.json();
+        if (response.ok) {
+            currentGroup = group;
+            enterJasonSelection();
+        } else { alert(result.error); }
+    } catch (e) { alert("Servidor Offline na porta 3001!"); }
+}
 
-    if (action === 'create') {
-        if (allData.privateGroups[group]) {
-            soundDenied.play(); alert("Este grupo já existe!");
-        } else {
-            allData.privateGroups[group] = { password: pass, jasons: new Array(15).fill(null) };
-            saveAll();
-            currentGroup = group;
-            soundAdd.play();
-            enterJasonSelection();
-        }
-    } else {
-        if (allData.privateGroups[group] && allData.privateGroups[group].password === pass) {
-            currentGroup = group;
-            soundClick.play();
-            enterJasonSelection();
-        } else {
-            soundDenied.play(); alert("Acesso Negado: Dados incorretos.");
-        }
-    }
+async function renderJasonGrid() {
+    const grid = document.getElementById('jason-grid');
+    grid.innerHTML = "Carregando...";
+    
+    try {
+        const response = await fetch(`${API_URL}/load-group/${currentGroup}`);
+        const data = await response.json();
+        const jasons = new Array(15).fill(null);
+        data.forEach(d => jasons[d.jason_index] = d);
+
+        grid.innerHTML = "";
+        jasons.forEach((data, index) => {
+            const slot = document.createElement('div');
+            slot.className = data ? 'jason-slot filled' : 'jason-slot empty';
+            if (data) {
+                const items = JSON.parse(data.items);
+                slot.innerHTML = `<div class="reset-jason-btn" onclick="event.stopPropagation(); resetJason(${index})">🗑️</div>
+                                  <strong>Jason ${index + 1}</strong><span>${items.length} Itens</span>
+                                  <div class="last-mod">${data.last_user}</div>`;
+                slot.onclick = () => { currentJasonIndex = index; currentListItems = items; updateListUI(); switchScreen('screen-editor'); };
+            } else {
+                slot.innerHTML = `<strong>Jason ${index+1}</strong><span>Vazio</span>`;
+                slot.onclick = () => { currentJasonIndex = index; currentListItems = []; updateListUI(); switchScreen('screen-editor'); };
+            }
+            grid.appendChild(slot);
+        });
+    } catch (e) { grid.innerHTML = "Erro ao conectar ao servidor."; }
+}
+
+async function saveToJason() {
+    try {
+        await fetch(`${API_URL}/save-jason`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ group_name: currentGroup, jason_index: currentJasonIndex, last_user: currentUser, items: currentListItems })
+        });
+        enterJasonSelection();
+    } catch (e) { alert("Erro ao salvar."); }
+}
+
+async function resetJason(index) {
+    if(!confirm("Apagar?")) return;
+    await fetch(`${API_URL}/delete-jason`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_name: currentGroup, jason_index: index })
+    });
+    renderJasonGrid();
 }
 
 function switchScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
-    
-    // Controle de exibição da Casinha (Home)
-    const homeBtn = document.getElementById('home-btn');
-    if (id === 'screen-selection' || id === 'screen-editor') {
-        homeBtn.style.display = 'block';
-    } else {
-        homeBtn.style.display = 'none';
-    }
+    document.getElementById('home-btn').style.display = (id === 'screen-selection' || id === 'screen-editor') ? 'block' : 'none';
 }
 
-// Entra na tela de 15 Jasons
-function enterJasonSelection() {
-    document.getElementById('welcome-msg').innerText = `MODO: ${currentGroup.toUpperCase()} | OPERADOR: ${currentUser}`;
-    switchScreen('screen-selection');
-    renderJasonGrid();
-}
-
-// --- GRID E BUSCA ---
-
-function renderJasonGrid() {
-    const grid = document.getElementById('jason-grid');
-    grid.innerHTML = "";
-    const jasons = (currentMode === 'shared') ? allData.shared : allData.privateGroups[currentGroup].jasons;
-
-    jasons.forEach((data, index) => {
-        const slot = document.createElement('div');
-        slot.className = data ? 'jason-slot filled' : 'jason-slot empty';
-        
-        if (data) {
-            const totalItems = data.items.length;
-            const totalValue = data.items.reduce((acc, item) => acc + item.total, 0);
-            slot.innerHTML = `
-                <div class="reset-jason-btn" onclick="event.stopPropagation(); resetJason(${index})">🗑️</div>
-                <strong>Jason ${index + 1}</strong>
-                <span>${totalItems} Produtos | R$ ${totalValue.toFixed(2)}</span>
-                <div class="last-mod">Última edição: ${data.lastUser}</div>
-            `;
-            slot.onclick = () => loadJason(index);
-        } else {
-            slot.innerHTML = `<strong>Jason ${index+1}</strong><span>Disponível</span>`;
-            slot.onclick = () => createJason(index);
-        }
-        grid.appendChild(slot);
+function updateListUI() {
+    const container = document.getElementById('list-container');
+    container.innerHTML = "";
+    let total = 0;
+    currentListItems.forEach(item => {
+        total += item.total;
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.innerHTML = `<div>${item.cdp}</div><div>${item.nome}</div><div>${item.qtd}</div><div>${item.valor}</div><div>${item.total.toFixed(2)}</div><button onclick="removeProduct(${item.id})">X</button>`;
+        container.appendChild(div);
     });
-}
-
-function filterJasons() {
-    const term = document.getElementById('search-jason').value.toLowerCase();
-    const slots = document.querySelectorAll('.jason-slot');
-    const jasons = (currentMode === 'shared') ? allData.shared : allData.privateGroups[currentGroup].jasons;
-
-    jasons.forEach((data, index) => {
-        const content = data ? (JSON.stringify(data) + `jason ${index+1}`).toLowerCase() : `jason ${index+1}`;
-        slots[index].classList.toggle('hidden-search', term !== "" && !content.includes(term));
-    });
-}
-
-// --- EDITOR DE PRODUTOS ---
-
-function calculateItemTotal() {
-    const qtd = parseFloat(document.getElementById('input-qtd').value) || 0;
-    const valor = parseFloat(document.getElementById('input-valor').value) || 0;
-    document.getElementById('display-item-total').innerText = (qtd * valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('grand-total').innerText = `R$ ${total.toFixed(2)}`;
 }
 
 function addProductToList() {
@@ -149,98 +127,18 @@ function addProductToList() {
     const nome = document.getElementById('input-nome').value;
     const qtd = parseFloat(document.getElementById('input-qtd').value);
     const valor = parseFloat(document.getElementById('input-valor').value);
-    const detalhes = document.getElementById('input-detalhes').value;
-
-    if (!cdp || !nome || isNaN(qtd) || isNaN(valor)) {
-        soundDenied.play();
-        alert("Campos obrigatórios ausentes!");
-        return;
-    }
-
-    soundAdd.play();
-    currentListItems.push({ id: Date.now(), cdp, nome, qtd, valor, detalhes, total: qtd * valor });
+    if (!cdp || !nome) return;
+    currentListItems.push({ id: Date.now(), cdp, nome, qtd, valor, total: qtd * valor });
     updateListUI();
-    
-    ["input-cdp", "input-nome", "input-qtd", "input-valor", "input-detalhes"].forEach(id => document.getElementById(id).value = "");
-    document.getElementById('display-item-total').innerText = "R$ 0,00";
-}
-
-function updateListUI() {
-    const container = document.getElementById('list-container');
-    container.innerHTML = "";
-    let grandTotal = 0;
-
-    currentListItems.forEach(item => {
-        grandTotal += item.total;
-        const div = document.createElement('div');
-        div.className = 'list-item';
-        div.innerHTML = `
-            <div>${item.cdp}</div>
-            <div>${item.nome}<br><small>${item.detalhes}</small></div>
-            <div>${item.qtd}</div>
-            <div>${item.valor.toFixed(2)}</div>
-            <div style="color:var(--primary)">${item.total.toFixed(2)}</div>
-            <button class="delete-btn" onclick="removeProduct(${item.id})">X</button>
-        `;
-        container.appendChild(div);
-    });
-    document.getElementById('grand-total').innerText = grandTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function filterProducts() {
-    const term = document.getElementById('search-product').value.toLowerCase();
-    const items = document.querySelectorAll('.list-item');
-    currentListItems.forEach((item, index) => {
-        const text = (item.nome + item.cdp).toLowerCase();
-        if(items[index]) items[index].classList.toggle('hidden-search', !text.includes(term));
-    });
 }
 
 function removeProduct(id) {
-    soundDenied.play();
-    currentListItems = currentListItems.filter(item => item.id !== id);
+    currentListItems = currentListItems.filter(i => i.id !== id);
     updateListUI();
 }
 
-function saveToJason() {
-    if (currentListItems.length === 0) { soundDenied.play(); return; }
-    const jasonObj = { lastUser: currentUser, date: new Date().toLocaleString(), items: currentListItems };
-
-    if (currentMode === 'shared') allData.shared[currentJasonIndex] = jasonObj;
-    else allData.privateGroups[currentGroup].jasons[currentJasonIndex] = jasonObj;
-
-    saveAll();
-    soundAdd.play();
-    enterJasonSelection(); // Volta para a grade de 15 após salvar
+async function enterJasonSelection() {
+    switchScreen('screen-selection');
+    renderJasonGrid();
 }
-
-function resetJason(index) {
-    soundDenied.play();
-    if(confirm("Deseja apagar este Jason?")) {
-        if (currentMode === 'shared') allData.shared[index] = null;
-        else allData.privateGroups[currentGroup].jasons[index] = null;
-        saveAll();
-        renderJasonGrid();
-    }
-}
-
-function loadJason(index) {
-    soundClick.play();
-    currentJasonIndex = index;
-    const jasons = (currentMode === 'shared') ? allData.shared : allData.privateGroups[currentGroup].jasons;
-    currentListItems = [...jasons[index].items];
-    updateListUI();
-    switchScreen('screen-editor');
-}
-
-function createJason(index) {
-    soundClick.play();
-    currentJasonIndex = index;
-    currentListItems = [];
-    updateListUI();
-    switchScreen('screen-editor');
-}
-
-function saveAll() {
-    localStorage.setItem('jason_vault', JSON.stringify(allData));
-}
+function goToHomeMenu() { switchScreen('screen-mode'); }
