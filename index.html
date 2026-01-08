@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador Jason</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <button id="home-btn" onclick="goToJasonSelection()">🏠</button>
+
+    <div id="screen-login" class="screen active">
+        <div class="login-container">
+            <div class="login-box">
+                <h2>Bem-vindo!</h2>
+                <p class="subtitle">Para começar, qual o seu nome?</p>
+                <input type="text" id="user-name-input" placeholder="Digite seu nome aqui...">
+                <button onclick="confirmName()">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-selection" class="screen">
+        <h2 id="welcome-msg">Olá, Usuário</h2>
+        <p>Selecione um Jason para carregar ou criar:</p>
+        <div class="jason-grid" id="jason-grid">
+            </div>
+    </div>
+
+    <div id="screen-editor" class="screen">
+        <div class="editor-container">
+            <h3>Adicionar Novo Item</h3>
+            
+            <div class="input-row">
+                <div class="input-group">
+                    <span class="tooltip-icon">?</span>
+                    <span class="tooltip-text">Código do produto</span>
+                    <input type="text" id="input-cdp" placeholder="CDP">
+                </div>
+                <div class="input-group">
+                    <input type="text" id="input-nome" placeholder="Nome do Produto">
+                </div>
+                <div class="input-group">
+                    <input type="number" id="input-qtd" placeholder="Quantidade" oninput="calculateItemTotal()">
+                </div>
+                <div class="input-group">
+                    <input type="number" id="input-valor" placeholder="Valor Unitário (R$)" oninput="calculateItemTotal()">
+                </div>
+            </div>
+
+            <div class="details-group">
+                <input type="text" class="details-input" id="input-detalhes" placeholder="Detalhes do Produto (Opcional)">
+            </div>
+
+            <div class="action-row">
+                <div class="item-total">
+                    Total deste item: <span id="display-item-total">R$ 0,00</span>
+                </div>
+                <button class="add-btn" onclick="addProductToList()">Adicionar à Lista</button>
+            </div>
+        </div>
+
+        <div class="product-list">
+            <h3>Lista Atual</h3>
+            <div class="list-header">
+                <div>CDP</div>
+                <div>Nome</div>
+                <div>Qtd</div>
+                <div>Valor Unit.</div>
+                <div>Total</div>
+                <div>Excluir</div>
+            </div>
+            <div id="list-container">
+                </div>
+        </div>
+
+        <div class="final-footer">
+            <div class="total-text">
+                Valor Total da Lista: <span id="grand-total">R$ 0,00</span>
+            </div>
+            <button class="save-jason-btn" onclick="saveToJason()">Adicionar ao Jason</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
