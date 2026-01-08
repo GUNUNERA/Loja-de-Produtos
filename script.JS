@@ -32,12 +32,18 @@ function confirmName() {
     switchScreen('screen-mode');
 }
 
+// BOTÃO DA CASINHA: Agora volta para a escolha de Modo
+function goToHomeMenu() {
+    soundClick.play();
+    switchScreen('screen-mode');
+}
+
 function selectMode(mode) {
     soundClick.play();
     currentMode = mode;
     if (mode === 'shared') {
         currentGroup = 'Compartilhado';
-        goToJasonSelection();
+        enterJasonSelection(); // Entra direto na grade de 15
     } else {
         switchScreen('screen-private-auth');
     }
@@ -57,13 +63,13 @@ function handlePrivateAuth(action) {
             saveAll();
             currentGroup = group;
             soundAdd.play();
-            goToJasonSelection();
+            enterJasonSelection();
         }
     } else {
         if (allData.privateGroups[group] && allData.privateGroups[group].password === pass) {
             currentGroup = group;
             soundClick.play();
-            goToJasonSelection();
+            enterJasonSelection();
         } else {
             soundDenied.play(); alert("Acesso Negado: Dados incorretos.");
         }
@@ -73,10 +79,18 @@ function handlePrivateAuth(action) {
 function switchScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
-    document.getElementById('home-btn').style.display = (id === 'screen-editor' || id === 'screen-selection') ? 'block' : 'none';
+    
+    // Controle de exibição da Casinha (Home)
+    const homeBtn = document.getElementById('home-btn');
+    if (id === 'screen-selection' || id === 'screen-editor') {
+        homeBtn.style.display = 'block';
+    } else {
+        homeBtn.style.display = 'none';
+    }
 }
 
-function goToJasonSelection() {
+// Entra na tela de 15 Jasons
+function enterJasonSelection() {
     document.getElementById('welcome-msg').innerText = `MODO: ${currentGroup.toUpperCase()} | OPERADOR: ${currentUser}`;
     switchScreen('screen-selection');
     renderJasonGrid();
@@ -197,7 +211,7 @@ function saveToJason() {
 
     saveAll();
     soundAdd.play();
-    goToJasonSelection();
+    enterJasonSelection(); // Volta para a grade de 15 após salvar
 }
 
 function resetJason(index) {
