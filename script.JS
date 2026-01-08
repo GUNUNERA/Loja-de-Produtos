@@ -1,89 +1,111 @@
 // --- ESTADO DA APLICAÇÃO ---
 let currentUser = "";
+let currentMode = "shared"; 
+let currentGroup = "default";
 let currentJasonIndex = null;
-let jasonsData = JSON.parse(localStorage.getItem('jasonsData')) || new Array(15).fill(null);
 let currentListItems = [];
 
-// --- CONFIGURAÇÃO DE SONS (SFX) ---
-const soundSwipe = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'); // Abertura
-const soundClick = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'); // Botões gerais
-const soundAdd = new Audio('https://assets.mixkit.co/active_storage/sfx/2004/2004-preview.mp3');   // Sucesso/Salvar
-const soundDenied = new Audio('https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3'); // ACESSO NEGADO / EXCLUIR
+// Banco de dados centralizado
+let allData = JSON.parse(localStorage.getItem('jason_vault')) || {
+    shared: new Array(15).fill(null),
+    privateGroups: {} 
+};
 
-// --- TELA DE ABERTURA & NAVEGAÇÃO ---
+// --- CONFIGURAÇÃO DE SONS ---
+const soundSwipe = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'); 
+const soundClick = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'); 
+const soundAdd = new Audio('https://assets.mixkit.co/active_storage/sfx/2004/2004-preview.mp3');   
+const soundDenied = new Audio('https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3'); 
+
+// --- NAVEGAÇÃO E AUTH ---
 
 function startIntroAnimation() {
-    const introScreen = document.getElementById('intro-screen');
-    
-    // Tocar som de deslize ao iniciar a animação visual
-    soundSwipe.play().catch(e => console.log("Áudio aguardando interação do usuário..."));
-
-    introScreen.classList.add('animate');
-    setTimeout(() => {
-        introScreen.style.display = 'none';
-    }, 1500); 
+    soundSwipe.play().catch(e => {});
+    document.getElementById('intro-screen').classList.add('animate');
+    setTimeout(() => { document.getElementById('intro-screen').style.display = 'none'; }, 1500);
 }
 
 function confirmName() {
+    currentUser = document.getElementById('user-name-input').value.trim();
+    if (!currentUser) { soundDenied.play(); alert("Insira sua assinatura!"); return; }
     soundClick.play();
-    const nameInput = document.getElementById('user-name-input');
-    if (nameInput.value.trim() === "") {
-        alert("Por favor, digite seu nome.");
-        return;
-    }
-    currentUser = nameInput.value;
-    document.getElementById('welcome-msg').innerText = `Olá, ${currentUser}`;
-    switchScreen('screen-selection');
-    renderJasonGrid();
+    switchScreen('screen-mode');
 }
 
-function switchScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(screenId).classList.add('active');
-
-    const homeBtn = document.getElementById('home-btn');
-    if (screenId === 'screen-editor') {
-        homeBtn.style.display = 'block';
+function selectMode(mode) {
+    soundClick.play();
+    currentMode = mode;
+    if (mode === 'shared') {
+        currentGroup = 'Compartilhado';
+        goToJasonSelection();
     } else {
-        homeBtn.style.display = 'none';
+        switchScreen('screen-private-auth');
     }
+}
+
+function handlePrivateAuth(action) {
+    const group = document.getElementById('group-name').value.trim();
+    const pass = document.getElementById('group-pass').value.trim();
+
+    if (!group || !pass) { soundDenied.play(); alert("Preencha grupo e senha!"); return; }
+
+    if (action === 'create') {
+        if (allData.privateGroups[group]) {
+            soundDenied.play(); alert("Este grupo já existe!");
+        } else {
+            allData.privateGroups[group] = { password: pass, jasons: new Array(15).fill(null) };
+            saveAll();
+            currentGroup = group;
+            soundAdd.play();
+            goToJasonSelection();
+        }
+    } else {
+        if (allData.privateGroups[group] && allData.privateGroups[group].password === pass) {
+            currentGroup = group;
+            soundClick.play();
+            goToJasonSelection();
+        } else {
+            soundDenied.play(); alert("Acesso Negado: Dados incorretos.");
+        }
+    }
+}
+
+function switchScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.getElementById('home-btn').style.display = (id === 'screen-editor' || id === 'screen-selection') ? 'block' : 'none';
 }
 
 function goToJasonSelection() {
-    soundClick.play();
+    document.getElementById('welcome-msg').innerText = `MODO: ${currentGroup.toUpperCase()} | OPERADOR: ${currentUser}`;
     switchScreen('screen-selection');
     renderJasonGrid();
 }
 
-// --- LÓGICA DO GRID JASON & PESQUISA ---
+// --- GRID E BUSCA ---
 
 function renderJasonGrid() {
     const grid = document.getElementById('jason-grid');
-    grid.innerHTML = ""; 
+    grid.innerHTML = "";
+    const jasons = (currentMode === 'shared') ? allData.shared : allData.privateGroups[currentGroup].jasons;
 
-    jasonsData.forEach((data, index) => {
+    jasons.forEach((data, index) => {
         const slot = document.createElement('div');
-        const slotNumber = index + 1;
+        slot.className = data ? 'jason-slot filled' : 'jason-slot empty';
         
         if (data) {
-            slot.className = 'jason-slot filled';
-            const totalItems = data.items ? data.items.length : 0;
+            const totalItems = data.items.length;
             const totalValue = data.items.reduce((acc, item) => acc + item.total, 0);
-            
             slot.innerHTML = `
-                <div class="reset-jason-btn" title="Resetar Jason" onclick="event.stopPropagation(); resetJason(${index})">🗑️</div>
-                <strong>Jason ${slotNumber}</strong>
-                <span style="font-size:0.8rem; margin-top:5px;">${totalItems} Produtos</span>
-                <span style="font-size:0.8rem;">R$ ${totalValue.toFixed(2)}</span>
+                <div class="reset-jason-btn" onclick="event.stopPropagation(); resetJason(${index})">🗑️</div>
+                <strong>Jason ${index + 1}</strong>
+                <span>${totalItems} Produtos | R$ ${totalValue.toFixed(2)}</span>
+                <div class="last-mod">Última edição: ${data.lastUser}</div>
             `;
-            slot.onclick = () => { soundClick.play(); loadJason(index); };
+            slot.onclick = () => loadJason(index);
         } else {
-            slot.className = 'jason-slot empty';
-            slot.innerHTML = `
-                <strong>Jason ${slotNumber}</strong>
-                <span>(Criar Novo)</span>
-            `;
-            slot.onclick = () => { soundClick.play(); createJason(index); };
+            slot.innerHTML = `<strong>Jason ${index+1}</strong><span>Disponível</span>`;
+            slot.onclick = () => createJason(index);
         }
         grid.appendChild(slot);
     });
@@ -92,63 +114,20 @@ function renderJasonGrid() {
 function filterJasons() {
     const term = document.getElementById('search-jason').value.toLowerCase();
     const slots = document.querySelectorAll('.jason-slot');
+    const jasons = (currentMode === 'shared') ? allData.shared : allData.privateGroups[currentGroup].jasons;
 
-    jasonsData.forEach((data, index) => {
-        const slot = slots[index];
-        const contentString = data ? JSON.stringify(data).toLowerCase() : "";
-        const matches = contentString.includes(term) || `jason ${index + 1}`.includes(term);
-        
-        slot.classList.toggle('hidden-search', term !== "" && !matches);
+    jasons.forEach((data, index) => {
+        const content = data ? (JSON.stringify(data) + `jason ${index+1}`).toLowerCase() : `jason ${index+1}`;
+        slots[index].classList.toggle('hidden-search', term !== "" && !content.includes(term));
     });
 }
 
-function resetJason(index) {
-    // Tocar som de Negado/Alerta antes mesmo de confirmar para dar impacto
-    soundDenied.play();
-    
-    if (confirm(`SISTEMA: Deseja realmente APAGAR permanentemente os dados do Jason ${index + 1}?`)) {
-        jasonsData[index] = null;
-        localStorage.setItem('jasonsData', JSON.stringify(jasonsData));
-        renderJasonGrid();
-    }
-}
-
-function createJason(index) {
-    currentJasonIndex = index;
-    currentListItems = [];
-    updateListUI();
-    switchScreen('screen-editor');
-}
-
-function loadJason(index) {
-    currentJasonIndex = index;
-    currentListItems = [...jasonsData[index].items]; 
-    updateListUI();
-    switchScreen('screen-editor');
-}
-
-// --- LÓGICA DO EDITOR & FILTRO DE PRODUTOS ---
-
-function filterProducts() {
-    const term = document.getElementById('search-product').value.toLowerCase();
-    const items = document.querySelectorAll('.list-item');
-
-    currentListItems.forEach((item, index) => {
-        const text = (item.nome + item.cdp + item.detalhes).toLowerCase();
-        if(items[index]) {
-            items[index].classList.toggle('hidden-search', !text.includes(term));
-        }
-    });
-}
+// --- EDITOR DE PRODUTOS ---
 
 function calculateItemTotal() {
     const qtd = parseFloat(document.getElementById('input-qtd').value) || 0;
     const valor = parseFloat(document.getElementById('input-valor').value) || 0;
-    const total = qtd * valor;
-    
-    document.getElementById('display-item-total').innerText = 
-        total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    return total;
+    document.getElementById('display-item-total').innerText = (qtd * valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 function addProductToList() {
@@ -158,36 +137,18 @@ function addProductToList() {
     const valor = parseFloat(document.getElementById('input-valor').value);
     const detalhes = document.getElementById('input-detalhes').value;
 
-    if (!cdp || !nome || !qtd || !valor) {
-        soundDenied.play(); // Som de erro se tentar adicionar vazio
-        alert("ERRO: Preencha os campos obrigatórios.");
+    if (!cdp || !nome || isNaN(qtd) || isNaN(valor)) {
+        soundDenied.play();
+        alert("Campos obrigatórios ausentes!");
         return;
     }
 
     soundAdd.play();
-
-    const newItem = {
-        id: Date.now(),
-        cdp, nome, qtd, valor, detalhes,
-        total: qtd * valor
-    };
-
-    currentListItems.push(newItem);
+    currentListItems.push({ id: Date.now(), cdp, nome, qtd, valor, detalhes, total: qtd * valor });
     updateListUI();
     
-    document.getElementById('input-cdp').value = "";
-    document.getElementById('input-nome').value = "";
-    document.getElementById('input-qtd').value = "";
-    document.getElementById('input-valor').value = "";
-    document.getElementById('input-detalhes').value = "";
+    ["input-cdp", "input-nome", "input-qtd", "input-valor", "input-detalhes"].forEach(id => document.getElementById(id).value = "");
     document.getElementById('display-item-total').innerText = "R$ 0,00";
-}
-
-function removeProduct(id) {
-    // Tocar som de Acesso Negado ao remover item
-    soundDenied.play();
-    currentListItems = currentListItems.filter(item => item.id !== id);
-    updateListUI();
 }
 
 function updateListUI() {
@@ -197,7 +158,6 @@ function updateListUI() {
 
     currentListItems.forEach(item => {
         grandTotal += item.total;
-        
         const div = document.createElement('div');
         div.className = 'list-item';
         div.innerHTML = `
@@ -210,24 +170,63 @@ function updateListUI() {
         `;
         container.appendChild(div);
     });
-
     document.getElementById('grand-total').innerText = grandTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+function filterProducts() {
+    const term = document.getElementById('search-product').value.toLowerCase();
+    const items = document.querySelectorAll('.list-item');
+    currentListItems.forEach((item, index) => {
+        const text = (item.nome + item.cdp).toLowerCase();
+        if(items[index]) items[index].classList.toggle('hidden-search', !text.includes(term));
+    });
+}
+
+function removeProduct(id) {
+    soundDenied.play();
+    currentListItems = currentListItems.filter(item => item.id !== id);
+    updateListUI();
+}
+
 function saveToJason() {
-    if (currentListItems.length === 0) {
-        soundDenied.play();
-        alert("A lista está vazia!");
-        return;
-    }
+    if (currentListItems.length === 0) { soundDenied.play(); return; }
+    const jasonObj = { lastUser: currentUser, date: new Date().toLocaleString(), items: currentListItems };
 
+    if (currentMode === 'shared') allData.shared[currentJasonIndex] = jasonObj;
+    else allData.privateGroups[currentGroup].jasons[currentJasonIndex] = jasonObj;
+
+    saveAll();
     soundAdd.play();
-    jasonsData[currentJasonIndex] = {
-        createdDate: new Date(),
-        items: currentListItems
-    };
-
-    localStorage.setItem('jasonsData', JSON.stringify(jasonsData));
-    alert(`DADOS SINCRONIZADOS: Jason ${currentJasonIndex + 1} atualizado.`);
     goToJasonSelection();
+}
+
+function resetJason(index) {
+    soundDenied.play();
+    if(confirm("Deseja apagar este Jason?")) {
+        if (currentMode === 'shared') allData.shared[index] = null;
+        else allData.privateGroups[currentGroup].jasons[index] = null;
+        saveAll();
+        renderJasonGrid();
+    }
+}
+
+function loadJason(index) {
+    soundClick.play();
+    currentJasonIndex = index;
+    const jasons = (currentMode === 'shared') ? allData.shared : allData.privateGroups[currentGroup].jasons;
+    currentListItems = [...jasons[index].items];
+    updateListUI();
+    switchScreen('screen-editor');
+}
+
+function createJason(index) {
+    soundClick.play();
+    currentJasonIndex = index;
+    currentListItems = [];
+    updateListUI();
+    switchScreen('screen-editor');
+}
+
+function saveAll() {
+    localStorage.setItem('jason_vault', JSON.stringify(allData));
 }

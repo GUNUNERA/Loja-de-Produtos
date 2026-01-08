@@ -335,3 +335,52 @@ button:hover { background: var(--primary-dark); box-shadow: 0 0 15px rgba(214, 0
 .hidden-search {
     display: none !important;
 }
+/* --- TELAS DE MODO E PRIVADO --- */
+.mode-container {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    align-items: center;
+    height: 70vh;
+}
+
+.mode-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    padding: 40px;
+    border-radius: 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.3s;
+    width: 280px;
+}
+
+.mode-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-10px);
+    box-shadow: var(--shadow);
+}
+
+.mode-card .icon { font-size: 3rem; margin-bottom: 15px; }
+
+/* Ajuste para inputs de senha */
+input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    background-color: var(--input-bg);
+    color: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+/* Badge de última modificação */
+.last-mod {
+    font-size: 0.7rem;
+    color: var(--primary);
+    margin-top: 8px;
+    font-style: italic;
+    background: rgba(214, 0, 0, 0.1);
+    padding: 2px 5px;
+    border-radius: 4px;
+}

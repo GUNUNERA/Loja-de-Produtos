@@ -22,12 +22,50 @@
     <div id="screen-login" class="screen active">
         <div class="login-container">
             <div class="login-box">
-                <h2>Bem-vindo!</h2>
-                <p class="subtitle">Para começar, qual o seu nome?</p>
-                <input type="text" id="user-name-input" placeholder="Digite seu nome aqui...">
-                <button onclick="confirmName()">Confirmar</button>
+                <h2>IDENTIFICAÇÃO</h2>
+                <p class="subtitle">Insira sua assinatura de acesso</p>
+                <input type="text" id="user-name-input" placeholder="Seu nome...">
+                <button onclick="confirmName()">Entrar</button>
             </div>
         </div>
+    </div>
+
+    <div id="screen-mode" class="screen">
+        <div class="mode-container">
+            <div class="mode-card" onclick="selectMode('shared')">
+                <div class="icon">🌐</div>
+                <h3>Jason Compartilhado</h3>
+                <p>Acesso livre ao banco de dados comum.</p>
+            </div>
+            <div class="mode-card" onclick="selectMode('private')">
+                <div class="icon">🔒</div>
+                <h3>Jason Privado</h3>
+                <p>Acesso restrito via grupo e senha.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-private-auth" class="screen">
+        <div class="login-container">
+            <div class="login-box">
+                <h3 id="auth-title">Acesso Privado</h3>
+                <input type="text" id="group-name" placeholder="Nome ou Código do Grupo">
+                <input type="password" id="group-pass" placeholder="Senha do Grupo">
+                <div class="action-row">
+                    <button onclick="handlePrivateAuth('load')">Carregar</button>
+                    <button class="add-btn" onclick="handlePrivateAuth('create')">Criar Novo</button>
+                </div>
+                <button class="delete-btn" style="margin-top:10px; width:100%" onclick="switchScreen('screen-mode')">Voltar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-selection" class="screen">
+        <h2 id="welcome-msg">Olá, Usuário</h2>
+        <div class="search-container">
+            <input type="text" id="search-jason" placeholder="Pesquisar nos Jasons..." oninput="filterJasons()">
+        </div>
+        <div class="jason-grid" id="jason-grid"></div>
     </div>
 
     <div id="screen-selection" class="screen">
