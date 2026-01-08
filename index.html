@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciador Jason</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
-
 
     <div id="intro-screen" onclick="startIntroAnimation()">
         <div class="intro-container">
@@ -63,54 +63,35 @@
     <div id="screen-selection" class="screen">
         <h2 id="welcome-msg">Olá, Usuário</h2>
         <div class="search-container">
-            <input type="text" id="search-jason" placeholder="Pesquisar nos Jasons..." oninput="filterJasons()">
+            <input type="text" id="search-jason" placeholder="Pesquisar por conteúdo nos Jasons..." oninput="filterJasons()">
         </div>
+        <p>Selecione um Jason para carregar ou criar:</p>
         <div class="jason-grid" id="jason-grid"></div>
-    </div>
-
-    <div id="screen-selection" class="screen">
-        <h2 id="welcome-msg">Olá, Usuário</h2>
-        <div class="search-container">
-    <input type="text" id="search-jason" placeholder="Pesquisar por conteúdo nos Jasons..." oninput="filterJasons()">
-
-    <p>Selecione um Jason para carregar ou criar:</p>
-        <div class="jason-grid" id="jason-grid">
-            </div>
     </div>
 
     <div id="screen-editor" class="screen">
         <div class="editor-container">
             <h3>Adicionar Novo Item</h3>
-            <div class="search-container">
-    <input type="text" id="search-product" placeholder="Filtrar produtos nesta lista..." oninput="filterProducts()">
-</div>
-            
             <div class="input-row">
                 <div class="input-group">
-                    <span class="tooltip-icon">?</span>
-                    <span class="tooltip-text">Código do produto</span>
                     <input type="text" id="input-cdp" placeholder="CDP">
                 </div>
                 <div class="input-group">
                     <input type="text" id="input-nome" placeholder="Nome do Produto">
                 </div>
                 <div class="input-group">
-                    <input type="number" id="input-qtd" placeholder="Quantidade" oninput="calculateItemTotal()">
+                    <input type="number" id="input-qtd" placeholder="Qtd" oninput="calculateItemTotal()">
                 </div>
                 <div class="input-group">
-                    <input type="number" id="input-valor" placeholder="Valor Unitário (R$)" oninput="calculateItemTotal()">
+                    <input type="number" id="input-valor" placeholder="Valor Unitário" oninput="calculateItemTotal()">
                 </div>
-            </div>
-
-            <div class="details-group">
-                <input type="text" class="details-input" id="input-detalhes" placeholder="Detalhes do Produto (Opcional)">
             </div>
 
             <div class="action-row">
                 <div class="item-total">
-                    Total deste item: <span id="display-item-total">R$ 0,00</span>
+                    Total: <span id="display-item-total">R$ 0,00</span>
                 </div>
-                <button class="add-btn" onclick="addProductToList()">Adicionar à Lista</button>
+                <button class="add-btn" onclick="addProductToList()">Adicionar</button>
             </div>
         </div>
 
@@ -120,19 +101,16 @@
                 <div>CDP</div>
                 <div>Nome</div>
                 <div>Qtd</div>
-                <div>Valor Unit.</div>
+                <div>Unit.</div>
                 <div>Total</div>
-                <div>Excluir</div>
+                <div>X</div>
             </div>
-            <div id="list-container">
-                </div>
+            <div id="list-container"></div>
         </div>
 
         <div class="final-footer">
-            <div class="total-text">
-                Valor Total da Lista: <span id="grand-total">R$ 0,00</span>
-            </div>
-            <button class="save-jason-btn" onclick="saveToJason()">Adicionar ao Jason</button>
+            <div class="total-text">Total: <span id="grand-total">R$ 0,00</span></div>
+            <button class="save-jason-btn" onclick="saveToJason()">Salvar no Banco SQL</button>
         </div>
     </div>
 
