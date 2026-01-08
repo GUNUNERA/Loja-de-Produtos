@@ -275,3 +275,38 @@ button:hover { background: var(--primary-dark); box-shadow: 0 0 15px rgba(214, 0
 #grand-total { color: var(--primary); font-weight: bold; text-shadow: 0 0 5px rgba(214, 0, 0, 0.6); }
 
 .save-jason-btn { background: var(--primary); font-size: 1.1rem; }
+
+/* --- BOTÃO DE RESET (LIXEIRA) NO JASON --- */
+.jason-slot {
+    position: relative; /* Necessário para posicionar a lixeira dentro dele */
+}
+
+.reset-jason-btn {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(255, 0, 0, 0.2);
+    color: #ff3333;
+    border: 1px solid #ff3333;
+    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0; /* Começa escondido */
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.jason-slot:hover .reset-jason-btn {
+    opacity: 1; /* Aparece no hover */
+}
+
+.reset-jason-btn:hover {
+    background: #ff3333;
+    color: white;
+    transform: scale(1.1);
+}

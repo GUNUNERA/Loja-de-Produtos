@@ -38,9 +38,11 @@ function goToJasonSelection() {
 
 // --- LÓGICA DO GRID JASON ---
 
+// --- LÓGICA DO GRID JASON (ATUALIZADA) ---
+
 function renderJasonGrid() {
     const grid = document.getElementById('jason-grid');
-    grid.innerHTML = ""; // Limpa grid
+    grid.innerHTML = ""; 
 
     jasonsData.forEach((data, index) => {
         const slot = document.createElement('div');
@@ -52,7 +54,9 @@ function renderJasonGrid() {
             const totalItems = data.items ? data.items.length : 0;
             const totalValue = data.items.reduce((acc, item) => acc + item.total, 0);
             
+            // Adicionamos o botão de lixeira (🗑️)
             slot.innerHTML = `
+                <div class="reset-jason-btn" onclick="event.stopPropagation(); resetJason(${index})">🗑️</div>
                 <strong>Jason ${slotNumber}</strong>
                 <span style="font-size:0.8rem; margin-top:5px;">${totalItems} Produtos</span>
                 <span style="font-size:0.8rem;">R$ ${totalValue.toFixed(2)}</span>
@@ -69,6 +73,15 @@ function renderJasonGrid() {
         }
         grid.appendChild(slot);
     });
+}
+
+// NOVA FUNÇÃO: Reseta o Jason para vazio
+function resetJason(index) {
+    if (confirm(`Deseja realmente apagar todos os dados do Jason ${index + 1}?`)) {
+        jasonsData[index] = null; // Limpa o dado no array
+        localStorage.setItem('jasonsData', JSON.stringify(jasonsData)); // Atualiza o armazenamento
+        renderJasonGrid(); // Recarrega os quadradinhos na tela
+    }
 }
 
 function createJason(index) {
