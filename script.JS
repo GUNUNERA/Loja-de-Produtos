@@ -1,12 +1,17 @@
 // --- ESTADO DA APLICAÇÃO ---
-const API_URL = "http://localhost:3001"; // Adicionado para o servidor
 let currentUser = "";
 let currentMode = "shared"; 
 let currentGroup = "default";
 let currentJasonIndex = null;
 let currentListItems = [];
 
-// --- CONFIGURAÇÃO DE SONS (MANTIDOS 100%) ---
+// Banco de dados centralizado
+let allData = JSON.parse(localStorage.getItem('jason_vault')) || {
+    shared: new Array(15).fill(null),
+    privateGroups: {} 
+};
+
+// --- CONFIGURAÇÃO DE SONS ---
 const soundSwipe = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'); 
 const soundClick = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'); 
 const soundAdd = new Audio('https://assets.mixkit.co/active_storage/sfx/2004/2004-preview.mp3');   
@@ -27,10 +32,10 @@ function confirmName() {
     switchScreen('screen-mode');
 }
 
+// BOTÃO DA CASINHA: Agora volta para a escolha de Modo
 function goToHomeMenu() {
     soundClick.play();
-    switchScreen('screen-private-auth');
-    //switchScreen('screen-mode');
+    switchScreen('screen-mode');
 }
 
 function selectMode(mode) {
@@ -38,46 +43,36 @@ function selectMode(mode) {
     currentMode = mode;
     if (mode === 'shared') {
         currentGroup = 'Compartilhado';
-        enterJasonSelection();
+        enterJasonSelection(); // Entra direto na grade de 15
     } else {
         switchScreen('screen-private-auth');
     }
 }
 
-// Lógica de grupos privados mantida - Apenas a verificação será via servidor agora
-// Adicione o parâmetro 'action' aqui
-async function handlePrivateAuth(action, event) { 
-    if (event) event.preventDefault(); // <--- O CÓDIGO MÁGICO
-
+function handlePrivateAuth(action) {
     const group = document.getElementById('group-name').value.trim();
     const pass = document.getElementById('group-pass').value.trim();
 
-    if (!group || !pass) { 
-        soundDenied.play(); 
-        alert("Preencha o nome do grupo e a senha!"); 
-        return; 
-    }
+    if (!group || !pass) { soundDenied.play(); alert("Preencha grupo e senha!"); return; }
 
-    try {
-        const res = await fetch(`${API_URL}/auth-group`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            // Enviamos a 'action' (create ou login) para o servidor saber o que fazer
-            body: JSON.stringify({ name: group, password: pass, action: action }) 
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-            currentGroup = group; 
+    if (action === 'create') {
+        if (allData.privateGroups[group]) {
+            soundDenied.play(); alert("Este grupo já existe!");
+        } else {
+            allData.privateGroups[group] = { password: pass, jasons: new Array(15).fill(null) };
+            saveAll();
+            currentGroup = group;
+            soundAdd.play();
+            enterJasonSelection();
+        }
+    } else {
+        if (allData.privateGroups[group] && allData.privateGroups[group].password === pass) {
+            currentGroup = group;
             soundClick.play();
             enterJasonSelection();
         } else {
-            soundDenied.play();
-            alert(data.error); 
+            soundDenied.play(); alert("Acesso Negado: Dados incorretos.");
         }
-    } catch (e) {
-        alert("Erro ao conectar com o servidor!");
     }
 }
 
@@ -85,6 +80,7 @@ function switchScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
     
+    // Controle de exibição da Casinha (Home)
     const homeBtn = document.getElementById('home-btn');
     if (id === 'screen-selection' || id === 'screen-editor') {
         homeBtn.style.display = 'block';
@@ -93,64 +89,54 @@ function switchScreen(id) {
     }
 }
 
+// Entra na tela de 15 Jasons
 function enterJasonSelection() {
     document.getElementById('welcome-msg').innerText = `MODO: ${currentGroup.toUpperCase()} | OPERADOR: ${currentUser}`;
     switchScreen('screen-selection');
     renderJasonGrid();
 }
 
-// --- GRID E BUSCA (AGORA PUXANDO DO SERVIDOR) ---
+// --- GRID E BUSCA ---
 
-async function renderJasonGrid() {
+function renderJasonGrid() {
     const grid = document.getElementById('jason-grid');
-    grid.innerHTML = "Carregando...";
-    
-    try {
-        const res = await fetch(`${API_URL}/load/${currentMode}/${currentGroup}`);
-        const savedData = await res.json();
-        
-        grid.innerHTML = "";
-        // Criamos os 15 slots baseados no seu design original
-        for (let index = 0; index < 15; index++) {
-            const dbRecord = savedData.find(j => j.jason_index === index);
-            const data = dbRecord ? JSON.parse(dbRecord.data) : null;
-            
-            const slot = document.createElement('div');
-            slot.className = data ? 'jason-slot filled' : 'jason-slot empty';
-            
-            if (data) {
-                const totalItems = data.items.length;
-                const totalValue = data.items.reduce((acc, item) => acc + item.total, 0);
-                slot.innerHTML = `<div class="reset-jason-btn" onclick="resetJason(${index}, event)">🗑️</div>
-                    <div class="reset-jason-btn" onclick="event.stopPropagation(); resetJason(${index})">🗑️</div>
-                    <strong>Jason ${index + 1}</strong>
-                    <span>${totalItems} Produtos | R$ ${totalValue.toFixed(2)}</span>
-                    <div class="last-mod">Última edição: ${data.lastUser}</div>
-                `;
-                slot.onclick = () => loadJason(index, data.items);
-            } else {
-                slot.innerHTML = `<strong>Jason ${index+1}</strong><span>Disponível</span>`;
-                slot.onclick = () => createJason(index);
-            }
-            grid.appendChild(slot);
-        }
-    } catch (e) {
-        console.error(e);
-        alert("Erro ao conectar com o servidor SQL!");
-    }
-}
+    grid.innerHTML = "";
+    const jasons = (currentMode === 'shared') ? allData.shared : allData.privateGroups[currentGroup].jasons;
 
-// Sua função de filtro original
-function filterJasons() {
-    const term = document.getElementById('search-jason').value.toLowerCase();
-    const slots = document.querySelectorAll('.jason-slot');
-    slots.forEach(slot => {
-        const text = slot.innerText.toLowerCase();
-        slot.classList.toggle('hidden-search', term !== "" && !text.includes(term));
+    jasons.forEach((data, index) => {
+        const slot = document.createElement('div');
+        slot.className = data ? 'jason-slot filled' : 'jason-slot empty';
+        
+        if (data) {
+            const totalItems = data.items.length;
+            const totalValue = data.items.reduce((acc, item) => acc + item.total, 0);
+            slot.innerHTML = `
+                <div class="reset-jason-btn" onclick="event.stopPropagation(); resetJason(${index})">🗑️</div>
+                <strong>Jason ${index + 1}</strong>
+                <span>${totalItems} Produtos | R$ ${totalValue.toFixed(2)}</span>
+                <div class="last-mod">Última edição: ${data.lastUser}</div>
+            `;
+            slot.onclick = () => loadJason(index);
+        } else {
+            slot.innerHTML = `<strong>Jason ${index+1}</strong><span>Disponível</span>`;
+            slot.onclick = () => createJason(index);
+        }
+        grid.appendChild(slot);
     });
 }
 
-// --- EDITOR DE PRODUTOS (IGUAL AO SEU ORIGINAL) ---
+function filterJasons() {
+    const term = document.getElementById('search-jason').value.toLowerCase();
+    const slots = document.querySelectorAll('.jason-slot');
+    const jasons = (currentMode === 'shared') ? allData.shared : allData.privateGroups[currentGroup].jasons;
+
+    jasons.forEach((data, index) => {
+        const content = data ? (JSON.stringify(data) + `jason ${index+1}`).toLowerCase() : `jason ${index+1}`;
+        slots[index].classList.toggle('hidden-search', term !== "" && !content.includes(term));
+    });
+}
+
+// --- EDITOR DE PRODUTOS ---
 
 function calculateItemTotal() {
     const qtd = parseFloat(document.getElementById('input-qtd').value) || 0;
@@ -216,71 +202,33 @@ function removeProduct(id) {
     updateListUI();
 }
 
-// --- SALVAMENTO NO SERVIDOR ---
-
-async function saveToJason(event) {
-    if (event) event.preventDefault(); // Impede o refresh da página
+function saveToJason() {
     if (currentListItems.length === 0) { soundDenied.play(); return; }
-    
-    const jasonObj = { 
-        lastUser: currentUser, 
-        date: new Date().toLocaleString(), 
-        items: currentListItems 
-    };
+    const jasonObj = { lastUser: currentUser, date: new Date().toLocaleString(), items: currentListItems };
 
-    try {
-        await fetch(`${API_URL}/save`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                mode: currentMode,
-                group_name: currentGroup,
-                jason_index: currentJasonIndex,
-                data: jasonObj
-            })
-        });
-        soundAdd.play();
-        
-        // AQUI ESTÁ O SEGREDO:
-        // Não chame o Login, chame apenas a função que desenha a grade.
-        switchScreen('screen-selection'); // Volta para a tela dos 15 Jasons
-        renderJasonGrid();               // Atualiza os desenhos dos slots
-    } catch (e) {
-        alert("Erro ao salvar no servidor!");
-    }
+    if (currentMode === 'shared') allData.shared[currentJasonIndex] = jasonObj;
+    else allData.privateGroups[currentGroup].jasons[currentJasonIndex] = jasonObj;
+
+    saveAll();
+    soundAdd.play();
+    enterJasonSelection(); // Volta para a grade de 15 após salvar
 }
 
-async function resetJason(index) {
-
-// Aqui usamos dois freios:
-    if (event) {
-        event.preventDefault();  // 1. Não recarrega a página
-        event.stopPropagation(); // 2. Não clica no slot de baixo (não abre o Jason)
-    }
-
+function resetJason(index) {
+    soundDenied.play();
     if(confirm("Deseja apagar este Jason?")) {
-        soundDenied.play();
-        try {
-            await fetch(`${API_URL}/delete`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ 
-                    mode: currentMode, 
-                    group_name: currentGroup, 
-                    jason_index: index 
-                })
-            });
-            renderJasonGrid();
-        } catch (e) {
-            alert("Erro ao apagar!");
-        }
+        if (currentMode === 'shared') allData.shared[index] = null;
+        else allData.privateGroups[currentGroup].jasons[index] = null;
+        saveAll();
+        renderJasonGrid();
     }
 }
 
-function loadJason(index, items) {
+function loadJason(index) {
     soundClick.play();
     currentJasonIndex = index;
-    currentListItems = [...items];
+    const jasons = (currentMode === 'shared') ? allData.shared : allData.privateGroups[currentGroup].jasons;
+    currentListItems = [...jasons[index].items];
     updateListUI();
     switchScreen('screen-editor');
 }
@@ -291,4 +239,8 @@ function createJason(index) {
     currentListItems = [];
     updateListUI();
     switchScreen('screen-editor');
+}
+
+function saveAll() {
+    localStorage.setItem('jason_vault', JSON.stringify(allData));
 }
