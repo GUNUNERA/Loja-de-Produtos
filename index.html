@@ -52,8 +52,8 @@
                 <input type="text" id="group-name" placeholder="Nome ou Código do Grupo">
                 <input type="password" id="group-pass" placeholder="Senha do Grupo">
                 <div class="action-row">
-                   <button class="btn-ajustado" type="button" onclick="handlePrivateAuth('create')">Criar um novo Jason</button>
-                   <button class="btn-ajustado" type="button" onclick="handlePrivateAuth('login')">Entrar no seu Jason</button>
+                   <button class="btn-ajustado" type="button" onclick="handlePrivateAuth('create', event)">Criar um novo Jason</button>
+                   <button class="btn-ajustado" type="button" onclick="handlePrivateAuth('login', event)">Entrar no seu Jason</button>
                 </div>
                 <button class="delete-btn" style="margin-top:10px; width:100%" onclick="switchScreen('screen-mode')">Voltar</button>
             </div>
@@ -124,7 +124,7 @@
             <div class="total-text">
                 Valor Total da Lista: <span id="grand-total">R$ 0,00</span>
             </div>
-            <button type="button" onclick="saveToJason(event)">Adicionar ao Jason</button>
+            <button type="button" id="btn-save" onclick="saveToJason(event)">Adicionar ao Jason</button>
         </div>
     </div>
 

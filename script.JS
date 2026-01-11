@@ -29,7 +29,8 @@ function confirmName() {
 
 function goToHomeMenu() {
     soundClick.play();
-    switchScreen('screen-mode');
+    switchScreen('screen-private-auth');
+    //switchScreen('screen-mode');
 }
 
 function selectMode(mode) {
@@ -45,7 +46,9 @@ function selectMode(mode) {
 
 // Lógica de grupos privados mantida - Apenas a verificação será via servidor agora
 // Adicione o parâmetro 'action' aqui
-async function handlePrivateAuth(action) { 
+async function handlePrivateAuth(action, event) { 
+    if (event) event.preventDefault(); // <--- O CÓDIGO MÁGICO
+
     const group = document.getElementById('group-name').value.trim();
     const pass = document.getElementById('group-pass').value.trim();
 
@@ -118,7 +121,7 @@ async function renderJasonGrid() {
             if (data) {
                 const totalItems = data.items.length;
                 const totalValue = data.items.reduce((acc, item) => acc + item.total, 0);
-                slot.innerHTML = `
+                slot.innerHTML = `<div class="reset-jason-btn" onclick="resetJason(${index}, event)">🗑️</div>
                     <div class="reset-jason-btn" onclick="event.stopPropagation(); resetJason(${index})">🗑️</div>
                     <strong>Jason ${index + 1}</strong>
                     <span>${totalItems} Produtos | R$ ${totalValue.toFixed(2)}</span>
@@ -248,6 +251,13 @@ async function saveToJason(event) {
 }
 
 async function resetJason(index) {
+
+// Aqui usamos dois freios:
+    if (event) {
+        event.preventDefault();  // 1. Não recarrega a página
+        event.stopPropagation(); // 2. Não clica no slot de baixo (não abre o Jason)
+    }
+
     if(confirm("Deseja apagar este Jason?")) {
         soundDenied.play();
         try {
