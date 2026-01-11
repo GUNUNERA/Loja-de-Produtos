@@ -44,16 +44,38 @@ function selectMode(mode) {
 }
 
 // Lógica de grupos privados mantida - Apenas a verificação será via servidor agora
-async function handlePrivateAuth(action) {
+// Adicione o parâmetro 'action' aqui
+async function handlePrivateAuth(action) { 
     const group = document.getElementById('group-name').value.trim();
     const pass = document.getElementById('group-pass').value.trim();
 
-    if (!group || !pass) { soundDenied.play(); alert("Preencha grupo e senha!"); return; }
+    if (!group || !pass) { 
+        soundDenied.play(); 
+        alert("Preencha o nome do grupo e a senha!"); 
+        return; 
+    }
 
-    // Aqui usamos o servidor para validar/criar o grupo
-    currentGroup = group;
-    soundClick.play();
-    enterJasonSelection();
+    try {
+        const res = await fetch(`${API_URL}/auth-group`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // Enviamos a 'action' (create ou login) para o servidor saber o que fazer
+            body: JSON.stringify({ name: group, password: pass, action: action }) 
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            currentGroup = group; 
+            soundClick.play();
+            enterJasonSelection();
+        } else {
+            soundDenied.play();
+            alert(data.error); 
+        }
+    } catch (e) {
+        alert("Erro ao conectar com o servidor!");
+    }
 }
 
 function switchScreen(id) {
@@ -193,7 +215,8 @@ function removeProduct(id) {
 
 // --- SALVAMENTO NO SERVIDOR ---
 
-async function saveToJason() {
+async function saveToJason(event) {
+    if (event) event.preventDefault(); // Impede o refresh da página
     if (currentListItems.length === 0) { soundDenied.play(); return; }
     
     const jasonObj = { 
@@ -214,7 +237,11 @@ async function saveToJason() {
             })
         });
         soundAdd.play();
-        enterJasonSelection();
+        
+        // AQUI ESTÁ O SEGREDO:
+        // Não chame o Login, chame apenas a função que desenha a grade.
+        switchScreen('screen-selection'); // Volta para a tela dos 15 Jasons
+        renderJasonGrid();               // Atualiza os desenhos dos slots
     } catch (e) {
         alert("Erro ao salvar no servidor!");
     }

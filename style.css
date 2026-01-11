@@ -384,3 +384,11 @@ input[type="password"] {
     padding: 2px 5px;
     border-radius: 4px;
 }
+/* Criamos a classe .btn-ajustado */
+.btn-ajustado {
+    padding: 6px 12px;    /* 1º número: altura | 2º número: largura interna */
+    font-size: 15px;      /* Tamanho da letra (diminuir para 12px se quiser menor) */
+    width: auto;          /* Faz o botão ter apenas o tamanho do texto dentro dele */
+    min-width: 100px;     /* Garante que ele não fique "esmagado" demais */
+    cursor: pointer;      /* Garante que o ícone de 'mãozinha' apareça ao passar o mouse */
+}
